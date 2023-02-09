@@ -1,0 +1,38 @@
+MAP
+    NAME "map"
+    EXTENT -70.810492 3.1505088 -69.4118681 4.4983138
+    
+    PROJECTION
+        "init=epsg:4326"
+    END
+
+    OUTPUTFORMAT
+        NAME "GEOTIFF_INT16"
+        DRIVER "GDAL/GTiff"
+        MIMETYPE "image/tiff"
+        FORMATOPTION "COMPRESS=DEFLATE"
+        FORMATOPTION "ZLEVEL=2"
+        FORMATOPTION "TILED=YES"
+        FORMATOPTION "PREDICTOR=2"
+        FORMATOPTION "NULLVALUE=-32768" # works with both WCS 1.x and WCS 2.0 - comment out to test WCS 1.x only
+        IMAGEMODE INT16
+        EXTENSION "tif"
+    END
+
+    WEB
+        METADATA
+            "ows_enable_request" "*"
+        END
+    END
+
+    LAYER
+        NAME "test"
+        METADATA
+            "wcs_rangeset_nullvalue" "-32768" # WCS 1.x only
+        END
+        TYPE RASTER
+        TEMPLATE "ttt"
+        STATUS ON
+        DATA "test.tif"
+    END
+END
