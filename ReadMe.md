@@ -15,6 +15,8 @@ METADATA
 END
 ```
 
+In the code this sets the `FORMATOPTION "NULLVALUE=-32768"` dynamically on the `OUTPUTFORMAT` requested by the client. 
+
 Note this is for **WCS 1.x only** as mentioned in the [WCS Server docs](https://mapserver.org/ogc/wcs_server.html#layer-object-metadata):
 
 > wcs_rangeset_nullvalue
@@ -49,7 +51,9 @@ Band 1 Block=256x256 Type=Int16, ColorInterp=Gray
 
 ## WCS 2.0
 
-The layer metadata approach described above is not implemented for WCS 2.0. Instead a NULL data value can be set directly on the `OUTPUTFORMAT` option. See 
+### Global OUTPUTFORMAT Setting
+
+The layer metadata approach described above is not implemented for WCS 2.0. One option is to set a NULL data value can be set directly on the `OUTPUTFORMAT` option. See 
 the [OUTPUTFORMAT docs](https://mapserver.org/mapfile/outputformat.html):
 
 > GDAL/*: “NULLVALUE=n” is used in raw image modes (IMAGEMODE BYTE/INT16/FLOAT) to pre-initialize the raster and an attempt 
@@ -74,11 +78,49 @@ OUTPUTFORMAT
 END
 ```
 
-Running the following commands confirms this:
+This approach has the limitation that different layers cannot use different NULL values, as all layers share the same `OUTPUTFORMAT` options. 
+
+### Layer Metadata Approach (Recommended)
+
+WCS 2.0 metadata options were updated [with this pull request](https://github.com/MapServer/MapServer/pull/6456) in MapServer 7.2. 
+They are documented [here](https://mapserver.org/ogc/wcs_server.html#layer-object-metadata):
+
+> wcs_outputformat_{OUTPUTFORMATNAME}_creationoption_{OPTIONNAME}
+>
+> Description: (Optional) (added in MapServer 7.2.0) To provide creation options in a (GDAL) output format 
+> specific and layer specific way. {OUTPUTFORMATNAME} should be substituted by the user with the OUTPUTFORMAT.NAME 
+> value of an output format allowed for the layer. And {OPTIONNAME} by a valid GDAL creation option valid for the OUTPUTFORMAT.DRIVER.
+>
+> The purpose of this metadata item is to provide creation options that depend on the layer, typically to configure some metadata in 
+> the resulting raster file that depends on that layer (for non-layer dependent configuration options, OUTPUTFORMAT.FORMATOPTION should rather be used).
+
+Example layer metadata:
+
+```	
+METADATA
+	# this metadata item is in the format wcs_outputformat_{OUTPUTFORMAT}_creationoption_{FORMATOPTION}		
+	"wcs_outputformat_GEOTIFF_INT16_creationoption_nullvalue" "-32768" # WCS 2.0 only
+END
+```
+
+Again in the code this sets the `FORMATOPTION "NULLVALUE=-32768"` dynamically on the `OUTPUTFORMAT` requested by the client. 
+
+Running the following command to check this:
 
 ```
 mapserv -nh "QUERY_STRING=map=test.map&SERVICE=WCS&VERSION=2.0.0&REQUEST=GetCoverage&CoverageId=test&FORMAT=GEOTIFF_INT16&BBOX=-69.955,3.420,-69.701,3.5896&CRS=EPSG:4326&WIDTH=500&HEIGHT=500" > output2.tif
 gdalinfo output.tif
 ```
 
+Output:
+
+```
+Band 1 Block=256x256 Type=Int16, ColorInterp=Gray
+  NoData Value=-32768
+```
+
+If debugging is set to on the logs should have output confirming the option has been set:
+
+```
+[Thu Feb  9 11:58:56 2023].796000 Setting GDAL nullvalue=-32768 creation option
 ```

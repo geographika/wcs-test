@@ -2,6 +2,9 @@ MAP
     NAME "map"
     EXTENT -70.810492 3.1505088 -69.4118681 4.4983138
     
+    CONFIG "MS_ERRORFILE" "ms.log"
+    DEBUG 5
+    
     PROJECTION
         "init=epsg:4326"
     END
@@ -14,7 +17,7 @@ MAP
         FORMATOPTION "ZLEVEL=2"
         FORMATOPTION "TILED=YES"
         FORMATOPTION "PREDICTOR=2"
-        FORMATOPTION "NULLVALUE=-32768" # works with both WCS 1.x and WCS 2.0 - comment out to test WCS 1.x only
+        # FORMATOPTION "NULLVALUE=-32768" # works with both WCS 1.x and WCS 2.0 - comment out to test layer metadata options onlyy
         IMAGEMODE INT16
         EXTENSION "tif"
     END
@@ -27,8 +30,12 @@ MAP
 
     LAYER
         NAME "test"
+        DEBUG 5
         METADATA
             "wcs_rangeset_nullvalue" "-32768" # WCS 1.x only
+
+            # this metadata item is in the format wcs_outputformat_{OUTPUTFORMAT}_creationoption_{FORMATOPTION}
+            "wcs_outputformat_GEOTIFF_INT16_creationoption_nullvalue" "-32768" # WCS 2.0 only
         END
         TYPE RASTER
         TEMPLATE "ttt"
