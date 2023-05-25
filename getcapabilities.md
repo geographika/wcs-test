@@ -1,11 +1,10 @@
-# WCS GetCapabilities
+# WCS GetCapabilities Requests
 
 Returning GetCapabilities for a WCS service can be very slow, for example when calling: https://maps.isric.org/mapserv?map=/map/nitrogen.map&request=getcapabilities&service=wcs
 
 To get GetCapabilities on the command line with the `test.map` used in this project:
 
 ```
-# note for MapServer 8.0 the MAPSERVER_CONFIG_FILE environment variable may need to be set
 cd D:\GitHub\wcs-test
 set MAPSERVER_CONFIG_FILE=mapserver.conf
 mapserv -nh "QUERY_STRING=map=test.map&SERVICE=WCS&VERSION=2.0.0&REQUEST=getcapabilities"
@@ -37,52 +36,54 @@ LAYER
 
 As per the [MapServer WCS docs](https://www.mapserver.org/ogc/wcs_server.html#specifying-coverage-specific-metadata):
 
-    The convention is that once (wcs|ows)_extent and one of (wcs|ows)_size and (wcs|ows)_resolution is set in the layer metadata, all the coverage specific metadata will be retrieved from there. Otherwise the source image is queried via GDAL, if possible.
+> The convention is that once (wcs|ows)_extent and one of (wcs|ows)_size and (wcs|ows)_resolution is set in the layer metadata, all the coverage specific metadata will be retrieved from there. Otherwise the source image is queried via GDAL, if possible.
 
-    The relevant layer metadata fields are (wcs|ows)_bandcount, (wcs|ows)_imagemode, (wcs|ows)_native_format, and all New band related metadata entries.
+> The relevant layer metadata fields are (wcs|ows)_bandcount, (wcs|ows)_imagemode, (wcs|ows)_native_format, and all New band related metadata entries.
+
+Interestingly the XML response doesn't include the size or resolution metadata calculated for each layer. See the
+[example response](wcs_capabilities.xml):
+
+```xml
+  <wcs:Contents>
+    <wcs:CoverageSummary>
+      <wcs:CoverageId>test</wcs:CoverageId>
+      <wcs:CoverageSubtype>RectifiedGridCoverage</wcs:CoverageSubtype>
+    </wcs:CoverageSummary>
+  </wcs:Contents>
+```
+
+The `msWCSGetCoverageMetadata20` function is reused in a few places, so it was probably simplest to call this each time,
+however there is definitely room for optimisation here if only the titles of each layer are required.
 
 The raster metadata items can be calculated using GDAL - `gdalinfo test.tif`:
 
-```bat
+```shell
 Driver: GTiff/GeoTIFF
-Files: D:\GitHub\wcs-test\test.tif
+Files: test.tif
 Size is 633, 610
 Coordinate System is:
 GEOGCRS["WGS 84",
     DATUM["World Geodetic System 1984",
-        ELLIPSOID["WGS 84",6378137,298.257223563,
-            LENGTHUNIT["metre",1]]],
-    PRIMEM["Greenwich",0,
-        ANGLEUNIT["degree",0.0174532925199433]],
-    CS[ellipsoidal,2],
-        AXIS["geodetic latitude (Lat)",north,
-            ORDER[1],
-            ANGLEUNIT["degree",0.0174532925199433]],
-        AXIS["geodetic longitude (Lon)",east,
-            ORDER[2],
-            ANGLEUNIT["degree",0.0174532925199433]],
-    ID["EPSG",4326]]
+...
 Data axis to CRS axis mapping: 2,1
 Origin = (-70.810491990260900,4.498313785228503)
 Pixel Size = (0.002209516370912,-0.002209516370912)
-Metadata:
-  AREA_OR_POINT=Area
-Image Structure Metadata:
-  INTERLEAVE=BAND
-Corner Coordinates:
-Upper Left  ( -70.8104920,   4.4983138) ( 70d48'37.77"W,  4d29'53.93"N)
-Lower Left  ( -70.8104920,   3.1505088) ( 70d48'37.77"W,  3d 9' 1.83"N)
-Upper Right ( -69.4118681,   4.4983138) ( 69d24'42.73"W,  4d29'53.93"N)
-Lower Right ( -69.4118681,   3.1505088) ( 69d24'42.73"W,  3d 9' 1.83"N)
-Center      ( -70.1111801,   3.8244113) ( 70d 6'40.25"W,  3d49'27.88"N)
-Band 1 Block=633x6 Type=Int16, ColorInterp=Gray
-  NoData Value=-32768
+...
 ```
 
-Alternatively a MapServer `DescribeCoverage` request can be used e.g.
+Alternatively a MapServer `DescribeCoverage` request can be used to get these details e.g.
 
 ```
 mapserv -nh "QUERY_STRING=map=test.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=DescribeCoverage&COVERAGEID=test"
+```
+
+The `size` parameter is included in the following block (resolution does not appear to be returned):
+
+```xml
+<gml:GridEnvelope>
+    <gml:low>0 0</gml:low>
+    <gml:high>632 609</gml:high>
+</gml:GridEnvelope>
 ```
 
 Example on a live site: https://maps.isric.org/mapserv?map=/map/nitrogen.map&SERVICE=WCS&VERSION=2.0.1&REQUEST=DescribeCoverage&COVERAGEID=nitrogen_15-30cm_Q0.5
